@@ -9,7 +9,7 @@ import errorHandler from './middlewares/errorHandler.js';
 export const setupServer = () => {
   const app = express();
   const corsMiddleware = cors();
-
+  app.use(express.json());
   app.use('/contacts', contactsRouter);
   app.use(corsMiddleware);
   app.use(logger);
