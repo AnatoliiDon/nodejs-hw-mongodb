@@ -7,9 +7,22 @@ import {
   deleteContact,
 } from '../services/contacts.js';
 import createError from 'http-errors';
+import { parsePaginationParams } from '../utils/parsePaginationParams.js';
+import { parseSortParams } from '../utils/parseSortParams.js';
+import { sortByList } from '../db/models/contactsList.js';
+import { parseContactsFilterParams } from '../utils/filters/parseContactsFilterParams.js';
 
 export const getContactsController = async (request, response) => {
-  const contacts = await getContacts();
+  const { page, perPage } = parsePaginationParams(request.query);
+  const { sortBy, sortOrder } = parseSortParams(request.query, sortByList);
+  const filter = parseContactsFilterParams(request.query);
+  const contacts = await getContacts({
+    page,
+    perPage,
+    sortBy,
+    sortOrder,
+    filter,
+  });
   response.json({
     status: 200,
     message: 'Successfully found contacts!',
