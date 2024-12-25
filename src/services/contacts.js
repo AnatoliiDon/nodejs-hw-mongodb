@@ -22,9 +22,15 @@ export const getContacts = async ({
     .skip(skip)
     .limit(limit)
     .sort({ [sortBy]: sortOrder });
-  const total = await ContactCollection.find()
-    .merge(contactsQuery)
-    .countDocuments();
+
+  const totalQuery = ContactCollection.find();
+  if (filter.contactType) {
+    totalQuery.where('contactType').equals(filter.contactType);
+  }
+  if (filter.isFavourite) {
+    totalQuery.where('isFavourite').equals(filter.isFavourite);
+  }
+  const total = await totalQuery.countDocuments();
 
   const paginationData = calcPaginationData({ total, page, perPage });
 
