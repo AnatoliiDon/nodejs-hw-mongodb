@@ -6,13 +6,6 @@ const SMTP_PORT = getEnvVar('SMTP_PORT');
 const SMTP_PASSWORD = getEnvVar('SMTP_PASSWORD');
 const SMTP_USER = getEnvVar('SMTP_USER');
 
-console.log({
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_PASSWORD,
-  SMTP_USER,
-});
-
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: Number(SMTP_PORT),

@@ -12,6 +12,8 @@ import { parsePaginationParams } from '../utils/parsePaginationParams.js';
 import { parseSortParams } from '../utils/parseSortParams.js';
 import { sortByList } from '../db/models/contactsList.js';
 import { parseContactsFilterParams } from '../utils/filters/parseContactsFilterParams.js';
+import { saveFileToUploadsDir } from '../utils/saveFileToUploadsDir.js';
+import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 
 export const getContactsController = async (request, response) => {
   const { page, perPage } = parsePaginationParams(request.query);
@@ -50,8 +52,12 @@ export const getContactByIdController = async (request, response) => {
 };
 
 export const addContactController = async (request, response) => {
+  let photo;
+  if (request.file) {
+    photo = await saveFileToCloudinary(request.file);
+  }
   const { _id: userId } = request.user;
-  const contact = await addData({ ...request.body, userId });
+  const contact = await addData({ ...request.body, photo, userId });
   response.status(201).json({
     status: 201,
     message: 'Successfully created a contact!',
@@ -80,9 +86,16 @@ export const upsertContactController = async (request, response) => {
 };
 
 export const patchContactController = async (request, response) => {
+  let photo;
+  if (request.file) {
+    photo = await saveFileToCloudinary(request.file);
+  }
   const { id: _id } = request.params;
   const { _id: userId } = request.user;
-  const contact = await updateContact({ _id, userId }, request.body);
+  const contact = await updateContact(
+    { _id, userId },
+    { ...request.body, photo },
+  );
 
   if (!contact) {
     throw createError(404, `Contact ${_id} not found`);
