@@ -7,7 +7,10 @@ import {
   accessTokenLifeTime,
   refteshTokenLifeTime,
 } from '../constants/user.js';
-
+import handlebars from 'handlebars';
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { TEMPLATES_DIR } from '../constants/index.js';
 import { getEnvVar } from '../utils/getEnvVars.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import jwt from 'jsonwebtoken';
@@ -102,14 +105,64 @@ export const requestResetToken = async (email) => {
     },
     JWT_SECRET,
     {
-      expiresIn: '5m',
+      expiresIn: '15m',
     },
   );
 
-  await sendEmail({
-    from: SMTP_FROM,
-    to: email,
-    subject: 'Reset your password',
-    html: `<p>Click <a href="${resetToken}">here</a> to reset your password!</p>`,
+  const resetPasswordTemplatePath = path.join(
+    TEMPLATES_DIR,
+    'reset-password-email.html',
+  );
+
+  const templateSource = (
+    await fs.readFile(resetPasswordTemplatePath)
+  ).toString();
+  const APP_DOMAIN = getEnvVar('APP_DOMAIN');
+  const template = handlebars.compile(templateSource);
+  const html = template({
+    name: user.name,
+    link: `${APP_DOMAIN}/reset-password?token=${resetToken}`,
   });
+
+  try {
+    await sendEmail({
+      from: SMTP_FROM,
+      to: email,
+      subject: 'Reset your password',
+      html,
+    });
+  } catch {
+    throw createHttpError(
+      500,
+      'Failed to send the email, please try again later.',
+    );
+  }
+};
+
+export const resetPassword = async (payload) => {
+  let entries;
+
+  try {
+    entries = jwt.verify(payload.token, getEnvVar('JWT_SECRET'));
+  } catch (err) {
+    if (err instanceof Error)
+      throw createHttpError(401, 'Token is expired or invalid.');
+    throw err;
+  }
+
+  const user = await UserCollection.findOne({
+    email: entries.email,
+    _id: entries.sub,
+  });
+
+  if (!user) {
+    throw createHttpError(404, 'User not found');
+  }
+
+  const encryptedPassword = await bcrypt.hash(payload.password, 10);
+
+  await UserCollection.updateOne(
+    { _id: user._id },
+    { password: encryptedPassword },
+  );
 };
