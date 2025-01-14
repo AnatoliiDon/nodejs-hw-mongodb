@@ -8,6 +8,10 @@ import {
   refteshTokenLifeTime,
 } from '../constants/user.js';
 
+import { getEnvVar } from '../utils/getEnvVars.js';
+import { sendEmail } from '../utils/sendEmail.js';
+import jwt from 'jsonwebtoken';
+
 export const register = async (payload) => {
   const { email, password } = payload;
   const user = await UserCollection.findOne({ email });
@@ -83,3 +87,29 @@ export const logout = async (sessionId) => {
 export const getUser = (filter) => UserCollection.findOne(filter);
 
 export const getSession = (filter) => sessionCollection.findOne(filter);
+
+export const requestResetToken = async (email) => {
+  const user = await UserCollection.findOne({ email });
+  if (!user) {
+    throw createHttpError(404, 'User not found');
+  }
+  const SMTP_FROM = getEnvVar('SMTP_FROM');
+  const JWT_SECRET = getEnvVar('JWT_SECRET');
+  const resetToken = jwt.sign(
+    {
+      sub: user._id,
+      email,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: '5m',
+    },
+  );
+
+  await sendEmail({
+    from: SMTP_FROM,
+    to: email,
+    subject: 'Reset your password',
+    html: `<p>Click <a href="${resetToken}">here</a> to reset your password!</p>`,
+  });
+};
